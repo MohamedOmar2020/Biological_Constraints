@@ -18,6 +18,8 @@ library(xtable)
 library(boot)
 library(patchwork)
 library(igraph)
+library(qgraph)
+library(tidyverse)
 
 ### Load expression and phenotype data
 load("./Objs/MetastasisDataGood.rda")
@@ -124,6 +126,9 @@ SWAP.Train.KTSPStrap <- function(data, indices) {
   rownames(KTSP_Train_Mech$TSPs) <- gsub(',', '-', rownames(KTSP_Train_Mech$TSPs))
   pairs_agnostic <- paste(rownames(KTSP_Train_Agnostic$TSPs), collapse = ',')
   pairs_Mech <- paste(rownames(KTSP_Train_Mech$TSPs), collapse = ',')
+  # get the score
+  TSP_score_agnostic <- paste(KTSP_Train_Agnostic$score, collapse = ',')
+  TSP_score_mech <- paste(KTSP_Train_Mech$score, collapse = ',')
   # get the invidiual genes
   gene1_agnostic <- paste(KTSP_Train_Agnostic$TSPs[,1], collapse = ',')
   gene2_agnostic <- paste(KTSP_Train_Agnostic$TSPs[,2], collapse = ',')
@@ -146,7 +151,7 @@ SWAP.Train.KTSPStrap <- function(data, indices) {
   AUC_Test_Mech <- ROCTestMech$auc
   Diff_Agnostic <- AUC_Train_Agnostic - AUC_Test_Agnostic
   Diff_Mechanistic <- AUC_Train_Mech - AUC_Test_Mech
-  return(c(N_Pairs_Agnostic, AUC_Train_Agnostic, AUC_Test_Agnostic, N_Pairs_Mech, AUC_Train_Mech, AUC_Test_Mech, Diff_Agnostic, Diff_Mechanistic, pairs_agnostic, pairs_Mech, gene1_agnostic, gene2_agnostic, gene1_Mech, gene2_Mech))
+  return(c(N_Pairs_Agnostic, AUC_Train_Agnostic, AUC_Test_Agnostic, N_Pairs_Mech, AUC_Train_Mech, AUC_Test_Mech, Diff_Agnostic, Diff_Mechanistic, pairs_agnostic, TSP_score_agnostic, pairs_Mech, TSP_score_mech, gene1_agnostic, gene2_agnostic, gene1_Mech, gene2_Mech))
 }
 
 
@@ -295,7 +300,7 @@ save(ModelCompare_KTSP, file = "./Objs/KTSP/ModelCompare_KTSP.rda")
 ##############################################################
 ### Work with boot object 100  
 All_100 <- bootobject_100$t
-colnames(All_100) <- c("N_Pairs_Agnostic", "AUC_Train_Agnostic", "AUC_Test_Agnostic", "N_Pairs_Mech", "AUC_Train_Mech", "AUC_Test_Mech", "Diff_Agnostic", "Diff_Mechanistic", "pairs_agnostic", "pairs_Mech", "gene1_agnostic", "gene2_agnostic", "gene1_Mech", "gene2_Mech")
+colnames(All_100) <- c("N_Pairs_Agnostic", "AUC_Train_Agnostic", "AUC_Test_Agnostic", "N_Pairs_Mech", "AUC_Train_Mech", "AUC_Test_Mech", "Diff_Agnostic", "Diff_Mechanistic", "pairs_agnostic", 'score_agnostic', "pairs_Mech", 'score_mech', "gene1_agnostic", "gene2_agnostic", "gene1_Mech", "gene2_Mech")
 
 ## Calculate the difference and CI of the difference (Training data)
 Diff_Agnostic_100 <- All_100[,"Diff_Agnostic"]
@@ -382,50 +387,53 @@ sum_result_mech <- do.call(rbind, list_results_mech)
 sum_result_mech$feature <- rownames(sum_result_mech)
 sum_result_mech <- as.data.frame(sum_result_mech[order(sum_result_mech$rep_rows, decreasing = T), ])
 
-###
-# bar plots
-MechFreq <- ggplot(data=sum_result_mech[c(1:20), ], aes(x=rep_rows, y=reorder(feature, rep_rows))) +
-  geom_col(width=0.5) + 
-  #coord_cartesian(xlim = c(1, 600))
-  scale_x_continuous(limits = c(1,550), n.breaks =10, oob = scales::squish) +
-  labs(y = "Pair", x = "Frequency", title = "Mechanistic") +
-  theme(plot.title = element_text(size=10, hjust=0.5), 
-        axis.text.y = element_text(size=8), 
-        axis.title.x = element_text(size=8),
-        axis.title.y = element_text(size=8)
-  )
+###########
+## histogram
+# # join the agnostic and mechanistic frequency
+sum_result_agnostic_freq <- sum_result_agnostic
+sum_result_agnostic_freq$type <- 'agnostic'
+sum_result_agnostic_freq$frequency <- sum_result_agnostic_freq$rep_rows/1000
+sum_result_agnostic_freq <- sum_result_agnostic_freq[c(1:100), ]
+sum_result_agnostic_freq$TSP <- factor(1:nrow(sum_result_agnostic_freq))
+levels(sum_result_agnostic_freq$TSP) <- paste0("TSP", levels(sum_result_agnostic_freq$TSP))
 
-AgnFreq <- ggplot(data=sum_result_agnostic[c(1:20), ], aes(x=rep_rows, y=reorder(feature, rep_rows))) +
-  geom_col(width=0.5) + 
-  #coord_cartesian(xlim = c(1, 600))
-  scale_x_continuous(limits = c(1,350), n.breaks =10, oob = scales::squish) +
-  labs(y = "Pair", x = "Frequency", title = "Agnostic") +
-  theme(plot.title = element_text(size=10, hjust=0.5), 
-        axis.text.y = element_text(size=8), 
-        axis.title.x = element_text(size=8),
-        axis.title.y = element_text(size=8)
-  )
+sum_result_mech_freq <- sum_result_mech
+sum_result_mech_freq$type <- 'mechanistic'
+sum_result_mech_freq$frequency <- sum_result_mech_freq$rep_rows/1000
+sum_result_mech_freq <- sum_result_mech_freq[c(1:100), ]
+sum_result_mech_freq$TSP <- factor(1:nrow(sum_result_mech_freq))
+levels(sum_result_mech_freq$TSP) <- paste0("TSP", levels(sum_result_mech_freq$TSP))
 
+sum_result_all <- rbind(sum_result_agnostic_freq, sum_result_mech_freq)
+table(sum_result_all$type)
+sum_result_all <- sum_result_all[order(sum_result_all$rep_rows, decreasing = T), ]
 
-tiff(filename = "./Figs/prostate_frequency.tiff", width = 3000, height = 2000, res = 300)
-((MechFreq + plot_layout(tag_level = "new") & theme(plot.tag = element_text(size = 10))) | 
-    (AgnFreq + plot_layout(tag_level = "new") & theme(plot.tag = element_text(size = 10))) 
-) +
-  #plot_layout(widths = c(0.4, 1)) + 
-  plot_annotation(
-    title = 'The 20 most frequent gene pairs returned by the k-TSPs model',
-    tag_levels = c('A'),
-    theme = theme(plot.title = element_text(size = 12, face = "bold"))
-  )
-dev.off()
+png('/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/prostate_pairs_frequency.png', width = 2000, height = 1500, res = 400)
+ggplot(sum_result_all, aes(x= TSP, y = rep_rows, fill = type)) +
+  geom_bar(stat = 'identity', position = position_dodge()) +
+  ylab("frequency") + 
+  theme(axis.text.x=element_text(angle=30,hjust=1, size = 0.3, colour = 'black'),
+        axis.text.y=element_text(size = 8, colour = 'black'),
+        axis.title.x=element_text(size = 10, colour = 'black'),
+        axis.title.y=element_text(size = 10, colour = 'black'),
+        axis.ticks.length=unit(0.05,"cm"), 
+        panel.background = element_rect(fill = "transparent", color = NA_character_),
+        axis.line = element_line(colour = 'black', size = 0.1), 
+        legend.key.size = unit(0.5, 'cm'), #change legend key size
+        legend.key.height = unit(0.5, 'cm'), #change legend key height
+        legend.key.width = unit(0.5, 'cm'), #change legend key width
+        legend.title = element_text(size=10), #change legend title font size
+        legend.text = element_text(size=10, colour = 'black'))+
+  scale_y_continuous(expand = c(0, 0))
+dev.off() 
 
-#########
+########################
 ## get the individual genes for pairs of interest
 
 # agnostic
 agnostic_indvGns_good <- All_100 %>%
   as.data.frame() %>%
-  dplyr::select(pairs_agnostic, gene1_agnostic, gene2_agnostic) %>%
+  dplyr::select(pairs_agnostic, gene1_agnostic, gene2_agnostic, score_agnostic) %>%
   #mutate(tmp = strsplit(as.character(pairs_Mech),',')) %>%
   #unnest(tmp) %>%
   group_by(pairs_agnostic) %>%
@@ -438,7 +446,7 @@ agnostic_indvGns_good <- All_100 %>%
   #unnest(tmp_gene1, keep_empty = T) %>%
   #mutate(row = row_number()) %>%
   #spread(row, tmp_gene1) %>%
-  separate_rows(c(pairs_agnostic, gene1_agnostic, gene2_agnostic), sep = ',') %>%
+  separate_rows(c(pairs_agnostic, gene1_agnostic, gene2_agnostic, score_agnostic), sep = ',') %>%
   #select(-pairs_Mech) %>%
   dplyr::rename(gene1=gene1_agnostic, gene2=gene2_agnostic)
 
@@ -542,8 +550,58 @@ mech_vertics <- mech_indvGns_good_clean %>%
 mech_indvGns_good_clean <- mech_indvGns_good_clean[c(1:100), ]
 mech_vertics <- mech_vertics[mech_vertics$gene %in% mech_indvGns_good_clean$gene1 | mech_vertics$gene %in% mech_indvGns_good_clean$gene2, ]
 
+#######################################
+# bar plots
+
+Mechfreq <- mech_indvGns_good_clean %>%
+  mutate(feature = paste(gene1, gene2, sep = '-')) %>%
+  select(-gene1, -gene2) %>%
+  top_n(10, wt = rep_rows)
+
+Agnosticfreq <- agnostic_indvGns_good_clean %>%
+  mutate(feature = paste(gene1, gene2, sep = '-')) %>%
+  select(-gene1, -gene2) %>%
+  top_n(10, wt = rep_rows)
+
+MechFreq_barplot <- ggplot(data=Mechfreq, aes(x=rep_rows, y=reorder(feature, rep_rows))) +
+  geom_col(width=0.5, fill='#00BFC4') + 
+  scale_x_continuous(limits = c(1,550), n.breaks =5, oob = scales::squish, expand = c(0, 0)) +
+  labs(y = "Pair", x = "Frequency", title = "Mechanistic") +
+  theme(plot.title = element_text(size=16, hjust=0.5, face = 'plain', color = 'black'), 
+        axis.text.y = element_text(size=10, color = 'black'),
+        axis.text.x = element_text(size=10, color = 'black'),
+        axis.title.x = element_text(size=12, color = 'black'),
+        axis.title.y = element_text(size=12, color = 'black')
+  )
+
+AgnosticFreq_barplot <- ggplot(data=Agnosticfreq, aes(x=rep_rows, y=reorder(feature, rep_rows))) +
+  geom_col(width=0.5, fill='#F8766D') + 
+  scale_x_continuous(limits = c(1,400), n.breaks =5, oob = scales::squish, expand = c(0, 0)) +
+  labs(y = "Pair", x = "Frequency", title = "Agnostic") +
+  theme(plot.title = element_text(size=16, hjust=0.5, face = 'plain', color = 'black'), 
+        axis.text.y = element_text(size=10, color = 'black'),
+        axis.text.x = element_text(size=10, color = 'black'),
+        axis.title.x = element_text(size=12, color = 'black'),
+        axis.title.y = element_text(size=12, color = 'black')
+  )
+
+
+tiff(filename = "/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/prostate_frequency.tiff", width = 3000, height = 2000, res = 300)
+((AgnosticFreq_barplot + plot_layout(tag_level = "new") & theme(plot.tag = element_text(size = 10))) | 
+    (MechFreq_barplot + plot_layout(tag_level = "new") & theme(plot.tag = element_text(size = 10))) 
+) +
+  #plot_layout(widths = c(0.4, 1)) + 
+  plot_annotation(
+    title = 'The 10 most frequent gene pairs returned by the k-TSPs model',
+    tag_levels = c('A'),
+    theme = theme(plot.title = element_text(size = 20, face = "plain", hjust = 0.5))
+  )
+dev.off()
+
 #############################
-## plot
+## network plots
+
+library(igraph)
 
 # make the graph
 network_mech <- graph_from_data_frame(mech_indvGns_good_clean, 
@@ -566,34 +624,42 @@ sd(mech_indvGns_good_clean$rep_rows)
 cut.off <- mean(mech_indvGns_good_clean$rep_rows) 
 network_mech_FilEdges <- delete_edges(network_mech, E(network_mech)[rep_rows<cut.off])
 
+l_mech <- qgraph.layout.fruchtermanreingold(get.edgelist(network_mech,names=FALSE),vcount=vcount(network_mech),
+                                            area=8*(vcount(network_mech)^2),repulse.rad=(vcount(network_mech)^3.1))
+
 ###
 ## plot
 set.seed(333)
-tiff(filename = 'figs/prostate_mech.tiff', width =  3000, height = 2000, res = 300)
-l_mech <- layout_nicely(network_mech)
-l_mech <- norm_coords(l_mech, ymin=-1, ymax=1, xmin=-1.5, xmax=1.5) #default -- scaled
+tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/gene_networks/prostate_mech.tiff', width =  5000, height = 4500, res = 400)
+#l_mech <- layout_nicely(network_mech)
+#l_mech <- norm_coords(l_mech, ymin=-1, ymax=1, xmin=-1.5, xmax=1.5) #default -- scaled
 plot(network_mech, 
      #vertex.size=degree(network_mech), 
      vertex.label.dist=0,
+     vertex.label.degree =-pi/2,	
      #edge.arrow.width=0, 
      edge.arrow.size=0, 
      arrow.size = 0, 
      arrow.width = 0,
      #label.cex=0.05,
-     vertex.label.cex=0.4,
+     vertex.label.cex=0.8,
+     vertex.frame.width = 0.1,
      rescale=T,
+     #asp = 1,
      layout = l_mech, 
      edge.curved=0.1,
-     main = 'Mechanistic gene pairs in predicting prostate cancer metastasis')
-legend(x=-1.5, y=-1.0, c("gene1","gene2"), pch=21,
-       col="#777777", pt.bg=c("tomato", "gold"), pt.cex=2, cex=.8, bty="n", ncol=1)
+     margin = -0.09
+     #main = 'Mechanistic'
+)
+#legend(x=-1.5, y=-1.0, c("gene1","gene2"), pch=21,
+#       col="#777777", pt.bg=c("tomato", "gold"), pt.cex=2, cex=.8, bty="n", ncol=1)
 dev.off()
 
 #####
 # cfg
 cfg_mech <- cluster_fast_greedy(as.undirected(network_mech))
 set.seed(333)
-tiff(filename = 'figs/prostate_mech_cfg.tiff', width =  3000, height = 2000, res = 300)
+tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/gene_networks/prostate_mech_cfg.tiff', width =  3000, height = 2000, res = 300)
 plot(cfg_mech, network_mech, 
      #vertex.size=degree(network_mech), 
      vertex.label.dist=0,
@@ -602,14 +668,18 @@ plot(cfg_mech, network_mech,
      arrow.size = 0, 
      arrow.width = 0,
      #label.cex=0.05,
-     vertex.label.cex=0.4,
+     vertex.frame.width = 0.2,
+     vertex.label.cex=0.3,
      rescale=T,
      layout = l_mech, 
      edge.curved=0.1,
-     main = 'Mechanistic gene pairs in predicting prostate cancer metastasis (clusters)')
-legend(x=-1.5, y=-1.0, c("gene1","gene2"), pch=21,
-       col="#777777", pt.bg=c("tomato", "gold"), pt.cex=2, cex=.8, bty="n", ncol=1)
+     margin = -0.2,
+     #main = 'Mechanistic'
+)
+#legend(x=-1.5, y=-1.0, c("gene1","gene2"), pch=21,
+#       col="#777777", pt.bg=c("tomato", "gold"), pt.cex=2, cex=.8, bty="n", ncol=1)
 dev.off()
+
 
 ############################
 ## agnostic
@@ -625,7 +695,7 @@ E(network_agnostic)$edge.color <- "black"
 edge.start <- ends(network_agnostic, es=E(network_agnostic), names=F)[,1]
 
 # vertices parameters
-V(network_agnostic)$size <- V(network_agnostic)$gene_frequency*0.06
+V(network_agnostic)$size <- V(network_agnostic)$gene_frequency*0.1
 V(network_agnostic)$color <- ifelse(V(network_agnostic)$order == 'gene1', "tomato", "gold")
 
 # filter edges
@@ -635,11 +705,14 @@ sd(agnostic_indvGns_good_clean$rep_rows)
 cut.off <- mean(agnostic_indvGns_good_clean$rep_rows) 
 network_agnostic_FilEdges <- delete_edges(network_agnostic, E(network_agnostic)[rep_rows<cut.off])
 
+l_agnostic <- qgraph.layout.fruchtermanreingold(get.edgelist(network_agnostic,names=FALSE),vcount=vcount(network_agnostic),
+                                                area=8*(vcount(network_agnostic)^2),repulse.rad=(vcount(network_agnostic)^3.1))
+
 ###
 ## plot
-tiff(filename = 'figs/prostate_agnostic.tiff', width =  3000, height = 2000, res = 300)
-l_agnostic <- layout_nicely(network_agnostic)
-l_agnostic <- norm_coords(l_agnostic, ymin=-1, ymax=1, xmin=-1.5, xmax=1.5) #default -- scaled
+tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/gene_networks/prostate_agnostic.tiff', width =  5000, height = 4500, res = 400)
+#l_agnostic <- layout_nicely(network_agnostic)
+#l_agnostic <- norm_coords(l_agnostic, ymin=-1, ymax=1, xmin=-1.5, xmax=1.5) #default -- scaled
 plot(network_agnostic, 
      #vertex.size=degree(network_agnostic), 
      vertex.label.dist=0,
@@ -648,21 +721,23 @@ plot(network_agnostic,
      #edge.width = 0.5,
      arrow.size = 0, 
      arrow.width = 0,
+     vertex.frame.width = 0.1,
      #label.cex=0.05,
-     vertex.label.cex=0.4,
+     vertex.label.cex=0.8,
      layout = l_agnostic,
      edge_curved =0.1,
-     main = 'Agnostic gene pairs in predicting prostate cancer metastasis' 
+     margin = -0.08,
+     #main = 'Agnostic'
 )
-legend(x=-1.5, y=-1.0, c("gene1","gene2"), pch=21,
-       col="#777777", pt.bg=c("tomato", "gold"), pt.cex=2, cex=.8, bty="n", ncol=1)
+#legend(x=-1.5, y=-1.0, c("gene1","gene2"), pch=21,
+#       col="#777777", pt.bg=c("tomato", "gold"), pt.cex=2, cex=.8, bty="n", ncol=1)
 dev.off()
 
 #####
 # cfg
 cfg_agnostic <- cluster_fast_greedy(as.undirected(network_agnostic))
 set.seed(333)
-tiff(filename = 'figs/prostate_agnostic_cfg.tiff', width =  3000, height = 2000, res = 200)
+tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/gene_networks/prostate_agnostic_cfg.tiff', width =  5000, height = 4500, res = 400)
 plot(cfg_agnostic, network_agnostic, 
      #vertex.size=degree(network_mech), 
      vertex.label.dist=0,
@@ -675,10 +750,407 @@ plot(cfg_agnostic, network_agnostic,
      rescale=T,
      layout = l_agnostic, 
      edge.curved=0.1,
-     main = 'Mechanistic gene pairs in predicting prostate cancer metastasis (clusters)')
+     margin = -0.1,
+     #main = 'Agnostic'
+)
 legend(x=-1.5, y=-1.0, c("gene1","gene2"), pch=21,
        col="#777777", pt.bg=c("tomato", "gold"), pt.cex=2, cex=.8, bty="n", ncol=1)
 dev.off()
+
+
+##########################################
+# Frequency per gene sets 
+
+library(msigdbr)
+
+genes_mech <- mech_vertics$gene
+genes_agnostic <- agnostic_vertics$gene
+
+# get the hallmarks gene sets
+hallmarks_gs <- msigdbr(species = "human", category = "H")
+
+hallmarks_gs_long <- hallmarks_gs %>%
+  dplyr::select(gs_name, human_gene_symbol)
+
+# if genes exist in mech genes, add 1 otherwise 0
+hallmarks_gs_long_mech <- hallmarks_gs_long %>%
+  dplyr::distinct() %>%
+  dplyr::mutate(mech_existence = dplyr::if_else(
+    human_gene_symbol %in% genes_mech, 
+    1, 0
+  ))
+
+hallmarks_gs_long_agnostic <- hallmarks_gs_long %>%
+  dplyr::distinct() %>%
+  dplyr::mutate(agnostic_existence = dplyr::if_else(
+    human_gene_symbol %in% genes_agnostic, 
+    1, 0
+  ))
+
+# long format
+hallmarks_gs_long_mech <- hallmarks_gs_long_mech %>%
+  tidyr::pivot_wider(
+    names_from = gs_name,
+    values_from = mech_existence,
+    values_fill = 0
+  )
+
+hallmarks_gs_long_agnostic <- hallmarks_gs_long_agnostic %>%
+  tidyr::pivot_wider(
+    names_from = gs_name,
+    values_from = agnostic_existence,
+    values_fill = 0
+  )
+
+# filter to mech genes
+hallmarks_gs_long_mech <- hallmarks_gs_long_mech %>%
+  dplyr::filter(
+    human_gene_symbol %in% genes_mech
+  )
+
+# filter to agnostic genes
+hallmarks_gs_long_agnostic <- hallmarks_gs_long_agnostic %>%
+  dplyr::filter(
+    human_gene_symbol %in% genes_agnostic
+  ) 
+
+# add missing genes
+missing_mech <- genes_mech[! genes_mech %in% unique(hallmarks_gs_long_mech$human_gene_symbol)]
+missing_agnostic <- genes_agnostic[! genes_agnostic %in% unique(hallmarks_gs_long_agnostic$human_gene_symbol)]
+
+hallmarks_gs_long_mech <- hallmarks_gs_long_mech %>%
+  dplyr::add_row(
+    human_gene_symbol = missing_mech
+  )
+
+hallmarks_gs_long_agnostic <- hallmarks_gs_long_agnostic %>%
+  dplyr::add_row(
+    human_gene_symbol = missing_agnostic
+  )
+
+# replace na with 0
+hallmarks_gs_long_mech[is.na(hallmarks_gs_long_mech)] <- 0
+hallmarks_gs_long_agnostic[is.na(hallmarks_gs_long_agnostic)] <- 0
+
+#####
+# make genes as rownames
+hallmarks_gs_long_mech <- as.data.frame(hallmarks_gs_long_mech)
+rownames(hallmarks_gs_long_mech) <- hallmarks_gs_long_mech$human_gene_symbol
+hallmarks_gs_long_mech$human_gene_symbol <- NULL
+
+hallmarks_gs_long_agnostic <- as.data.frame(hallmarks_gs_long_agnostic)
+rownames(hallmarks_gs_long_agnostic) <- hallmarks_gs_long_agnostic$human_gene_symbol
+hallmarks_gs_long_agnostic$human_gene_symbol <- NULL
+
+#####
+# matrix then fix the names
+hallmarks_gs_long_mech <- as.matrix(hallmarks_gs_long_mech)
+colnames(hallmarks_gs_long_mech) <- gsub('HALLMARK_', '', colnames(hallmarks_gs_long_mech))
+colnames(hallmarks_gs_long_mech) <- gsub('_', ' ', colnames(hallmarks_gs_long_mech))
+
+#hallmarks_gs_long_mech_sparse <- as(hallmarks_gs_long_mech, "sparseMatrix")
+
+hallmarks_gs_long_agnostic <- as.matrix(hallmarks_gs_long_agnostic)
+colnames(hallmarks_gs_long_agnostic) <- gsub('HALLMARK_', '', colnames(hallmarks_gs_long_agnostic))
+colnames(hallmarks_gs_long_agnostic) <- gsub('_', ' ', colnames(hallmarks_gs_long_agnostic))
+
+####
+## matrix for vertices
+#mech_sets <- data.frame(names = colnames(hallmarks_gs_long_mech), type = 'geneset')
+#mech_genes <- data.frame(names = rownames(hallmarks_gs_long_mech), type = 'gene')
+
+#gs_mech_vertics <- rbind(mech_sets, mech_genes)
+
+hallmarks_gs_long_mech_fil <- hallmarks_gs_long_mech[, colSums(hallmarks_gs_long_mech) !=0 ]
+
+hallmarks_gs_long_mech_adj <- t(hallmarks_gs_long_mech_fil) %*% hallmarks_gs_long_mech_fil
+
+hallmarks_gs_long_agnostic_fil <- hallmarks_gs_long_agnostic[, colSums(hallmarks_gs_long_agnostic) !=0 ]
+
+hallmarks_gs_long_agnostic_adj <- t(hallmarks_gs_long_agnostic_fil) %*% hallmarks_gs_long_agnostic_fil
+
+########################
+# the network
+network_gs_mech <- graph.adjacency(hallmarks_gs_long_mech_adj, diag = F)
+network_gs_agnostic <- graph.adjacency(hallmarks_gs_long_agnostic_adj, diag = F)
+
+network_gs_mech <- igraph::simplify(network_gs_mech, remove.multiple = TRUE, remove.loops = TRUE)
+network_gs_agnostic <- igraph::simplify(network_gs_agnostic, remove.multiple = TRUE, remove.loops = TRUE)
+
+#summary(V(network_gs_mech)$name %in% gs_mech_vertics$names) 
+
+# edges parameters
+#E(network_gs_mech)$width <- E(network_gs_mech)$weight
+#E(network_gs_mech)$edge.color <- 
+#edge.start <- ends(network_gs_mech, es=E(network_gs_mech), names=F)[,1]
+
+# vertices parameters
+#V(network_gs_mech)$size <- V(network_gs_mech)$gene_frequency*0.1
+#V(network_gs_mech)$color <- ifelse(V(network_gs_mech)$name %in% colnames(hallmarks_gs_long_mech), "tomato", "gold")
+#V(network_gs_agnostic)$color <- ifelse(V(network_gs_agnostic)$name %in% colnames(hallmarks_gs_long_agnostic), "tomato", "gold")
+
+
+#l_mech_gs <- layout_nicely(network_gs_mech)
+#l_mech_gs <- norm_coords(l_mech_gs, ymin=-1, ymax=1, xmin=-1.5, xmax=1.5) #default -- scaled
+
+l_mech_gs <- qgraph.layout.fruchtermanreingold(get.edgelist(network_gs_mech,names=FALSE),vcount=vcount(network_gs_mech),
+                                               area=8*(vcount(network_gs_mech)^2),repulse.rad=(vcount(network_gs_mech)^2))
+
+l_agnostic_gs <- qgraph.layout.fruchtermanreingold(get.edgelist(network_gs_agnostic,names=FALSE),vcount=vcount(network_gs_agnostic),
+                                                   area=8*(vcount(network_gs_agnostic)^2),repulse.rad=(vcount(network_gs_agnostic)^2))
+
+# CFG
+gs_cfg_mech <- cluster_fast_greedy(as.undirected(network_gs_mech))
+gs_cfg_agnostic <- cluster_fast_greedy(as.undirected(network_gs_agnostic))
+
+
+set.seed(333)
+# DEGREE: the number of genesets it overlaps with
+tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/genesets_networks/prostate_mech_gs.tiff', width = 5000, height = 4500, res = 400)
+plot(network_gs_mech, 
+     vertex.size=log(degree(network_gs_mech, mode = 'out')+1)*4, 
+     vertex.label.dist=0,
+     edge.arrow.width=0, 
+     edge.arrow.size=0, 
+     edge.width = 0.5,
+     arrow.size = 0, 
+     arrow.width = 0,
+     #label.cex=0.05,
+     vertex.label.cex=0.8,
+     #vertex.frame.color = NA,
+     vertex.frame.width = 0.2,
+     layout = l_mech_gs,
+     edge_curved =0.2,
+     #main = 'Mechanistic',
+     margin = -0.1
+)
+
+dev.off()
+
+#l_agnostic_gs <- layout_nicely(network_gs_agnostic)
+#l_agnostic_gs <- norm_coords(l_agnostic_gs, ymin=-1, ymax=1, xmin=-1.5, xmax=1.5) #default -- scaled
+
+
+set.seed(333)
+tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/genesets_networks/prostate_agnostic_gs.tiff', width =  5000, height = 4500, res = 400)
+plot(network_gs_agnostic, 
+     vertex.size=log(degree(network_gs_agnostic, mode = 'out')+1)*5, 
+     vertex.label.dist=0,
+     edge.arrow.width=0.1, 
+     edge.arrow.size=0.1, 
+     #edge.width = 0.5,
+     arrow.size = 0, 
+     arrow.width = 0,
+     vertex.label.cex=0.8,
+     #vertex.frame.color = NA,
+     vertex.frame.width = 0.2,
+     layout = l_agnostic_gs,
+     edge_curved =0.2,
+     #main = 'Agnostic',
+     margin = -0.1
+)
+dev.off()
+
+set.seed(333)
+tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/genesets_networks/prostate_mech_cfg_gs.tiff', width =  5000, height = 4500, res = 400)
+plot(gs_cfg_mech, network_gs_mech, 
+     vertex.size=log(degree(network_gs_mech, mode = 'out')+1)*5, 
+     vertex.label.dist=0,
+     edge.arrow.width=0, 
+     edge.arrow.size=0.0, 
+     edge.width = 0.2,
+     arrow.size = 0, 
+     arrow.width = 0,
+     vertex.label.cex=0.8,
+     #vertex.frame.color = NA,
+     vertex.frame.width = 0.2,
+     layout = l_mech_gs,
+     edge_curved =0.2,
+     #main = 'Mechanistic',
+     margin = -0.05
+)
+dev.off()
+
+tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/genesets_networks/prostate_agnostic_cfg_gs.tiff', width =  5000, height = 4500, res = 400)
+plot(gs_cfg_agnostic, network_gs_agnostic, 
+     vertex.size=log(degree(network_gs_agnostic, mode = 'out')+1)*5, 
+     vertex.label.dist=0,
+     edge.arrow.width=0.0, 
+     edge.arrow.size=0.0, 
+     edge.width = 0.2,
+     arrow.size = 0, 
+     arrow.width = 0,
+     vertex.label.cex=0.8,
+     #vertex.frame.color = NA,
+     vertex.frame.width = 0.2,
+     layout = l_agnostic_gs,
+     edge_curved =0.2,
+     #main = 'Agnostic',
+     margin = -0.05
+)
+dev.off()
+#####################################################################################
+## venn diagram
+library(VennDiagram)
+# genes
+
+mech_venn_lists <- apply(mech_indvGns_good_clean[c(1:100), ],1,as.list)
+mech_venn_lists <- lapply(mech_venn_lists, function(x){
+  x <- c(x[['gene1']], x[['gene2']])
+  #name(x) <- paste(x[['gene1']], x[['gene2']], sep = '-')
+  x
+})
+
+agnostic_venn_lists <- apply(agnostic_indvGns_good_clean[c(1:100), ],1,as.list)
+agnostic_venn_lists <- lapply(agnostic_venn_lists, function(x){
+  x <- c(x[['gene1']], x[['gene2']])
+  #name(x) <- paste(x[['gene1']], x[['gene2']], sep = '-')
+  x
+})
+
+mech_venn_lists <- unlist(mech_venn_lists, use.names = F)
+agnostic_venn_lists <- unlist(agnostic_venn_lists, use.names = F)
+
+list_venn <- list(agnostic_venn_lists, mech_venn_lists)
+names(list_venn) <- c('Agnostic', 'Mechanistic')
+
+###
+## The venn diagram
+# Prepare a palette of 5 colors with R colorbrewer:
+myCol <- brewer.pal(3, "Pastel2")[c(1,2)]
+
+genes_venn_plot <- venn.diagram(
+  x = list_venn,
+  filename = NULL,
+  #output=TRUE,
+  
+  # Output features
+  imagetype="png" ,
+  #height = 3000 , 
+  #width = 2000 , 
+  resolution = 600,
+  disable.logging = T,
+  
+  # Circles
+  lwd = 2,
+  lty = 'blank',
+  fill = c("#F8766D", '#00BFC4'),
+  inverted = T,
+  
+  # Numbers 
+  cex=c(1,0.8,1),
+  #fontface = "bold",
+  fontfamily = "sans",
+  
+  ext.text = F,
+  scaled = F, 
+  
+  # Set names
+  cat.cex = 1,
+  cat.fontface = "bold",
+  #cat.dist = c(0.055, 0.055),
+  cat.fontfamily = "sans",
+  #cat.default.pos = "text",
+  #cat.pos = c(177, 177)
+  margin = 0.05, 
+  #cat.col = c("#66C2A5", '#FC8D62')
+  #main = "Common genes"
+)
+
+# have a look at the default plot
+grid.newpage()
+grid.draw(genes_venn_plot)
+
+# have a look at the names in the plot object v
+lapply(genes_venn_plot,  names)
+# We are interested in the labels
+lapply(genes_venn_plot, function(i) i$label)
+
+# Over-write labels (5 to 7 chosen by manual check of labels)
+# in agnostic only
+genes_venn_plot[[5]]$label  <- length(unique(agnostic_venn_lists))-length(intersect(mech_venn_lists, agnostic_venn_lists)) 
+# in mech only
+genes_venn_plot[[6]]$label <- length(unique(mech_venn_lists))-length(intersect(mech_venn_lists, agnostic_venn_lists)) 
+# intesection
+genes_venn_plot[[7]]$label <- paste(intersect(list_venn$Agnostic, list_venn$Mechanistic), collapse="\n")  
+
+# plot  
+grid.newpage()
+grid.draw(genes_venn_plot)
+
+# save
+ggsave(filename="/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/venn/Venn_genes_prostate.tiff", plot=genes_venn_plot, device = 'tiff', width = 5000, height = 5000, units = 'px', dpi = 500)
+
+####################
+## genesets
+gs_venn_lists <- list(Agnostic = colnames(hallmarks_gs_long_agnostic_fil), Mechanistic = colnames(hallmarks_gs_long_mech_fil))
+
+## The venn diagram
+# Prepare a palette of 5 colors with R colorbrewer:
+myCol <- brewer.pal(3, "Pastel2")[c(1,2)]
+
+gs_venn_plot <- venn.diagram(
+  x = gs_venn_lists,
+  filename = NULL,
+  #output=TRUE,
+  
+  # Output features
+  imagetype="png" ,
+  #height = 3000 , 
+  #width = 2000 , 
+  resolution = 600,
+  disable.logging = T,
+  
+  # Circles
+  lwd = 2,
+  lty = 'blank',
+  inverted = T,
+  
+  fill = c("#F8766D", '#00BFC4'),
+  # Numbers 
+  cex=c(0.7,0.7,0.7),
+  #fontface = "bold",
+  fontfamily = "sans",
+  
+  ext.text = F,
+  scaled = F, 
+  
+  # Set names
+  cat.cex = 1.2,
+  cat.fontface = "bold",
+  #cat.dist = c(0.055, 0.055),
+  cat.fontfamily = "sans",
+  #cat.pos = c(177, 177)
+  margin = 0.05, 
+  #cat.col = c("#66C2A5", '#FC8D62')
+  #main = "Common genes"
+)
+
+# have a look at the default plot
+grid.newpage()
+grid.draw(gs_venn_plot)
+
+# have a look at the names in the plot object v
+lapply(gs_venn_plot,  names)
+# We are interested in the labels
+lapply(gs_venn_plot, function(i) i$label)
+
+# Over-write labels (5 to 7 chosen by manual check of labels)
+# in agnostic only
+gs_venn_plot[[5]]$label  <- paste(setdiff(gs_venn_lists$Agnostic, gs_venn_lists$Mechanistic), collapse="\n")  
+# in mech only
+gs_venn_plot[[6]]$label <- paste(setdiff(gs_venn_lists$Mechanistic, gs_venn_lists$Agnostic)  , collapse="\n")  
+# intesection
+gs_venn_plot[[7]]$label <- paste(intersect(gs_venn_lists$Agnostic, gs_venn_lists$Mechanistic), collapse="\n")  
+
+# plot  
+grid.newpage()
+grid.draw(gs_venn_plot)
+
+# save
+ggsave(filename="/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/venn/Venn_gs_Breast.tiff", plot=gs_venn_plot, device = 'tiff', width = 5000, height = 5000, units = 'px', dpi = 500)
+
+
 
 ###############################
 ##############################################################
