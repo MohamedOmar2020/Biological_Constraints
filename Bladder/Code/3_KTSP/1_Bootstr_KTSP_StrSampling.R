@@ -566,7 +566,7 @@ l_mech <- qgraph.layout.fruchtermanreingold(get.edgelist(network_mech,names=FALS
 ###
 ## plot
 set.seed(00000)
-tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/gene_networks/bladder_mech.tiff', width =  5000, height = 4500, res = 400)
+tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/gene_networks/bladder_mech.tiff', width =  6000, height = 6000, res = 600)
 #l_mech <- layout_nicely(network_mech)
 #l_mech <- norm_coords(l_mech, ymin=-1, ymax=1, xmin=-1.5, xmax=1.5) #default -- scaled
 plot(network_mech, 
@@ -576,7 +576,9 @@ plot(network_mech,
      edge.arrow.size=0, 
      arrow.size = 0, 
      arrow.width = 0,
-     vertex.label.cex=0.8,
+     vertex.label.cex=1,
+     vertex.label.degree = -pi/2,
+     vertex.label.color = "black",
      #vertex.frame.color = NA,
      vertex.frame.width = 0.2,
      rescale=T,
@@ -643,20 +645,23 @@ l_agnostic <- qgraph.layout.fruchtermanreingold(get.edgelist(network_agnostic,na
 ###
 ## plot
 set.seed(00000)
-tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/gene_networks/bladder_agnostic.tiff', width = 5000, height = 4500, res = 400)
+tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/gene_networks/bladder_agnostic.tiff', width = 7000, height = 7000, res = 600)
 #l_agnostic <- layout_nicely(network_agnostic)
 #l_agnostic <- norm_coords(l_agnostic, ymin=-1, ymax=1, xmin=-1.5, xmax=1.5) #default -- scaled
 plot(network_agnostic, 
      #vertex.size=degree(network_agnostic), 
      vertex.label.dist=0,
      #vertex.label.degree = 0,
+     vertex.label.cex=1,
+     vertex.label.degree = -pi/2,
+     vertex.label.color = "black",
+     
      edge.arrow.width=0, 
      edge.arrow.size=0, 
      #edge.width = 0.5,
      arrow.size = 0, 
      arrow.width = 0,
      #label.cex=0.05,
-     vertex.label.cex=0.8,
      #vertex.frame.color = NA,
      vertex.frame.width = 0.2,
      layout = l_agnostic,
@@ -808,88 +813,84 @@ network_gs_agnostic <- graph.adjacency(hallmarks_gs_long_agnostic_adj, diag = F)
 network_gs_mech <- simplify(network_gs_mech)
 network_gs_agnostic <- simplify(network_gs_agnostic)
 
-#summary(V(network_gs_mech)$name %in% gs_mech_vertics$names) 
+l_mech_gs <- qgraph.layout.fruchtermanreingold(get.edgelist(network_gs_mech,names=FALSE),vcount=vcount(network_gs_mech),
+                                       area=30*(vcount(network_gs_mech)^2),repulse.rad=(vcount(network_gs_mech)^3.1), niter=10000)
 
-# edges parameters
-#E(network_gs_mech)$width <- E(network_gs_mech)$weight
-#E(network_gs_mech)$edge.color <- 
-#edge.start <- ends(network_gs_mech, es=E(network_gs_mech), names=F)[,1]
-
-# vertices parameters
-#V(network_gs_mech)$size <- V(network_gs_mech)$gene_frequency*0.1
-#V(network_gs_mech)$color <- ifelse(V(network_gs_mech)$name %in% colnames(hallmarks_gs_long_mech), "tomato", "gold")
-#V(network_gs_agnostic)$color <- ifelse(V(network_gs_agnostic)$name %in% colnames(hallmarks_gs_long_agnostic), "tomato", "gold")
+l_agnostic_gs <- qgraph.layout.fruchtermanreingold(get.edgelist(network_gs_agnostic,names=FALSE),vcount=vcount(network_gs_agnostic),
+                                                   area=30*(vcount(network_gs_agnostic)^2), repulse.rad=(vcount(network_gs_agnostic)^3.1), niter=10000)
 
 # CFG
 gs_cfg_mech <- cluster_fast_greedy(as.undirected(network_gs_mech))
 gs_cfg_agnostic <- cluster_fast_greedy(as.undirected(network_gs_agnostic))
 
-#l_mech_gs <- layout_nicely(network_gs_mech)
-#l_mech_gs <- norm_coords(l_mech_gs, ymin=-1, ymax=1, xmin=-1.5, xmax=1.5) #default -- scaled
 
-l_mech_gs <- qgraph.layout.fruchtermanreingold(get.edgelist(network_gs_mech,names=FALSE),vcount=vcount(network_gs_mech),
-                                       area=8*(vcount(network_gs_mech)^2),repulse.rad=(vcount(network_gs_mech)^3.1))
-
-set.seed(333)
 # DEGREE: the number of genesets it overlaps with
-tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/genesets_networks/bladder_mech_gs.tiff', width = 5000, height = 4500, res = 400)
-plot(network_gs_mech, 
-     vertex.size=log(degree(network_gs_mech, mode = 'out')+1)*4, 
-     vertex.label.dist=0,
-     edge.arrow.width=0, 
-     edge.arrow.size=0, 
-     #edge.width = 0.5,
-     arrow.size = 0, 
-     arrow.width = 0,
-     #label.cex=0.05,
-     vertex.label.cex=0.8,
-     #vertex.frame.color = NA,
-     vertex.frame.width = 0.2,
-     layout = l_mech_gs,
-     edge_curved =0.2,
-     #main = 'Mechanistic',
-     margin = -0.1
-)
 
-dev.off()
+
+# set.seed(333)
+# tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/genesets_networks/bladder_mech_gs.tiff', width = 5000, height = 4500, res = 400)
+# plot(network_gs_mech, 
+#      vertex.size=log(degree(network_gs_mech, mode = 'out')+1)*4, 
+#      vertex.label.dist=0,
+#      edge.arrow.width=0, 
+#      edge.arrow.size=0, 
+#      vertex.label.cex=1,
+#      vertex.label.degree = -pi/2,
+#      vertex.label.color = "black",
+#      
+#      #edge.width = 0.5,
+#      arrow.size = 0, 
+#      arrow.width = 0,
+#      #label.cex=0.05,
+#      #vertex.frame.color = NA,
+#      vertex.frame.width = 0.2,
+#      layout = l_mech_gs,
+#      edge_curved =0.2,
+#      #main = 'Mechanistic',
+#      margin = -0.1
+# )
+# 
+# dev.off()
 
 #l_agnostic_gs <- layout_nicely(network_gs_agnostic)
 #l_agnostic_gs <- norm_coords(l_agnostic_gs, ymin=-1, ymax=1, xmin=-1.5, xmax=1.5) #default -- scaled
 
-l_agnostic_gs <- qgraph.layout.fruchtermanreingold(get.edgelist(network_gs_agnostic,names=FALSE),vcount=vcount(network_gs_agnostic),
-                                               area=8*(vcount(network_gs_agnostic)^2),repulse.rad=(vcount(network_gs_agnostic)^3.1))
+
+# set.seed(333)
+# tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/genesets_networks/bladder_agnostic_gs.tiff', width =10000, height =8000, res = 700)
+# plot(network_gs_agnostic, 
+#      vertex.size=log(degree(network_gs_agnostic, mode = 'out')+1)*5, 
+#      vertex.label.dist=0,
+#      edge.arrow.width=0.1, 
+#      edge.arrow.size=0.1, 
+#      #edge.width = 0.5,
+#      arrow.size = 0, 
+#      arrow.width = 0,
+#      vertex.label.cex=0.8,
+#      #vertex.frame.color = NA,
+#      vertex.frame.width = 0.2,
+#      layout = l_agnostic_gs,
+#      edge_curved =0.2,
+#      #main = 'Agnostic',
+#      margin = -0.1
+# )
+# dev.off()
 
 set.seed(333)
-tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/genesets_networks/bladder_agnostic_gs.tiff', width =  5000, height = 4500, res = 400)
-plot(network_gs_agnostic, 
-     vertex.size=log(degree(network_gs_agnostic, mode = 'out')+1)*5, 
-     vertex.label.dist=0,
-     edge.arrow.width=0.1, 
-     edge.arrow.size=0.1, 
-     #edge.width = 0.5,
-     arrow.size = 0, 
-     arrow.width = 0,
-     vertex.label.cex=0.8,
-     #vertex.frame.color = NA,
-     vertex.frame.width = 0.2,
-     layout = l_agnostic_gs,
-     edge_curved =0.2,
-     #main = 'Agnostic',
-     margin = -0.1
-)
-dev.off()
-
-set.seed(333)
-tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/genesets_networks/bladder_mech_cfg_gs.tiff', width =  5000, height = 4500, res = 400)
+tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/genesets_networks/bladder_mech_cfg_gs.tiff', width =10000, height =8000, res = 700)
 plot(gs_cfg_mech, network_gs_mech, 
      vertex.size=log(degree(network_gs_mech, mode = 'out')+1)*5, 
      vertex.label.dist=0,
      edge.arrow.width=0, 
      edge.arrow.size=0.0, 
+     
+     vertex.label.cex=1,
+     vertex.label.degree = -pi/2,
+     vertex.label.color = "black",
+     
      edge.width = 0.2,
      arrow.size = 0, 
      arrow.width = 0,
-     vertex.label.cex=0.8,
      #vertex.frame.color = NA,
      vertex.frame.width = 0.2,
      layout = l_mech_gs,
@@ -899,26 +900,266 @@ plot(gs_cfg_mech, network_gs_mech,
 )
 dev.off()
 
-tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/genesets_networks/bladder_agnostic_cfg_gs.tiff', width =  5000, height = 4500, res = 400)
+tiff(filename = '/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/genesets_networks/bladder_agnostic_cfg_gs.tiff', width =10000, height =10000, res = 800)
 plot(gs_cfg_agnostic, network_gs_agnostic, 
      vertex.size=log(degree(network_gs_agnostic, mode = 'out')+1)*5, 
      vertex.label.dist=0,
      edge.arrow.width=0.0, 
      edge.arrow.size=0.0, 
+     
+     vertex.label.cex=1.2,
+     vertex.label.degree = -pi/2,
+     vertex.label.color = "black",
+     
      edge.width = 0.2,
      arrow.size = 0, 
      arrow.width = 0,
-     vertex.label.cex=0.8,
      #vertex.frame.color = NA,
      vertex.frame.width = 0.2,
      layout = l_agnostic_gs,
      edge_curved =0.2,
      #main = 'Agnostic',
-     margin = -0.06
+     margin = -0.04
 )
 dev.off()
 
 
+####################################################################################
+### Geneset enrichment on all genes
+
+## organize the data:  mechanistic
+
+# get the gene names from the k-tsp classifiers 
+mech_forEnr <- All_74 %>%
+  as.data.frame() %>%
+  dplyr::select(pairs_Mech, gene1_Mech, gene2_Mech) %>%
+  group_by(pairs_Mech) %>%
+  separate_rows(c(pairs_Mech, gene1_Mech, gene2_Mech), sep = ',') %>%
+  dplyr::rename(gene1=gene1_Mech, gene2=gene2_Mech)
+
+# just for the frequency
+mech_forEnr_freq <- sum_result_mech %>%
+  dplyr::mutate(tmp = strsplit(as.character(feature),'-')) %>%
+  dplyr::mutate(gene1 = map_chr(tmp, 1),
+                gene2 = map_chr(tmp, 2)) %>%
+  dplyr::select(-tmp, -feature) %>%
+  relocate(rep_rows, .after = gene2)
+
+mech_forEnr_freq <- data.frame(rep_rows = mech_forEnr_freq$rep_rows, 
+                                     pairs_Mech = rownames(mech_forEnr_freq),
+                                     row.names = rownames(mech_forEnr_freq))
+
+# merge this with that
+mech_forEnr_unique <- mech_forEnr[!duplicated(mech_forEnr$pairs_Mech), ]
+mech_forEnr_clean <- merge(x = mech_forEnr_unique, y = mech_forEnr_freq, 
+                                        by = 'pairs_Mech', suffixes = colnames(mech_forEnr_unique))
+
+mech_forEnr_clean <- mech_forEnr_clean[order(mech_forEnr_clean$rep_rows, decreasing = T), ] 
+mech_forEnr_clean$pairs_Mech <- NULL
+
+#############
+## organize the data:  agnostic
+
+# get the gene names from the k-tsp classifiers 
+agnostic_forEnr <- All_74 %>%
+  as.data.frame() %>%
+  dplyr::select(pairs_agnostic, gene1_agnostic, gene2_agnostic) %>%
+  group_by(pairs_agnostic) %>%
+  separate_rows(c(pairs_agnostic, gene1_agnostic, gene2_agnostic), sep = ',') %>%
+  dplyr::rename(gene1=gene1_agnostic, gene2=gene2_agnostic)
+
+# just for the frequency
+agnostic_forEnr_freq <- sum_result_agnostic %>%
+  dplyr::mutate(tmp = strsplit(as.character(feature),'-')) %>%
+  dplyr::mutate(gene1 = map_chr(tmp, 1),
+                gene2 = map_chr(tmp, 2)) %>%
+  dplyr::select(-tmp, -feature) %>%
+  relocate(rep_rows, .after = gene2)
+
+agnostic_forEnr_freq <- data.frame(rep_rows = agnostic_forEnr_freq$rep_rows, 
+                               pairs_agnostic = rownames(agnostic_forEnr_freq),
+                               row.names = rownames(agnostic_forEnr_freq))
+
+# merge this with that
+agnostic_forEnr_unique <- agnostic_forEnr[!duplicated(agnostic_forEnr$pairs_agnostic), ]
+agnostic_forEnr_clean <- merge(x = agnostic_forEnr_unique, y = agnostic_forEnr_freq, 
+                           by = 'pairs_agnostic', suffixes = colnames(agnostic_forEnr_unique))
+
+agnostic_forEnr_clean <- agnostic_forEnr_clean[order(agnostic_forEnr_clean$rep_rows, decreasing = T), ] 
+agnostic_forEnr_clean$pairs_agnostic <- NULL
+
+
+################################
+## cleaning the mess
+# if a gene is repeated in gene1 and gene2, keep the order in which it is more frequent 
+
+# function to check how many times "a" (a length 1 atomic vector) occurs in "b":
+f <- function(a, b) {
+  a <- as.character(a)
+  
+  # make a lookup table a.k.a dictionary of values in b:
+  b_freq <- table(b, useNA = "always")
+  
+  # if a is in b, return it's frequency:
+  if (a %in% names(b_freq)) {
+    return(b_freq[a])
+  }
+  
+  # else (ie. a is not in b) return 0:
+  return(0)
+}
+
+# vectorise that, enabling intake of any length of "a":
+ff <- function(a, b) {
+  purrr::map_dbl(.x = a, .f = f, b = b)
+}
+
+################
+## clean mechanistic
+
+# detect and count the flips
+mech_forEnr_clean_legacy <- mech_forEnr_clean %>% 
+  dplyr::select(-rep_rows) %>%
+  group_by(gene1) %>%
+  mutate(gene1_freq_as_gene1 = length(gene1 %in% gene1)) %>%
+  ungroup() %>%
+  mutate(
+    gene1_freq_as_gene2 = ff(gene1, gene2)
+  ) %>%
+  group_by(gene2) %>%
+  mutate(gene2_freq_as_gene2 = length(gene2 %in% gene2)) %>%
+  ungroup() %>%
+  mutate(
+    gene2_freq_as_gene1 = ff(gene2, gene1)
+  ) 
+
+mech_forEnr_clean_fil <- mech_forEnr_clean %>% 
+  dplyr::select(-rep_rows) %>%
+  group_by(gene1) %>%
+  mutate(gene1_freq_as_gene1 = length(gene1 %in% gene1)) %>%
+  ungroup() %>%
+  mutate(
+    gene1_freq_as_gene2 = ff(gene1, gene2)
+  ) %>%
+  filter(!(gene1_freq_as_gene2 > gene1_freq_as_gene1)) %>%
+  filter(!(gene1_freq_as_gene2 == gene1_freq_as_gene1)) %>%
+  group_by(gene2) %>%
+  mutate(gene2_freq_as_gene2 = length(gene2 %in% gene2)) %>%
+  ungroup() %>%
+  mutate(
+    gene2_freq_as_gene1 = ff(gene2, gene1)
+  ) %>%
+  filter(!(gene2_freq_as_gene1 > gene2_freq_as_gene2)) %>%
+  filter(!(gene2_freq_as_gene1 == gene2_freq_as_gene2))
+  
+  
+  
+## get the genes
+mech_gene1 <- unique(mech_forEnr_clean_fil$gene1)
+mech_gene2 <- unique(mech_forEnr_clean_fil$gene2)
+
+# check
+summary(mech_gene1 %in% mech_gene2)
+summary(mech_gene2 %in% mech_gene1)
+
+################
+## clean agnostic
+
+# detect and count the flips
+agnostic_forEnr_clean_legacy <- agnostic_forEnr_clean %>% 
+  dplyr::select(-rep_rows) %>%
+  group_by(gene1) %>%
+  mutate(gene1_freq_as_gene1 = length(gene1 %in% gene1)) %>%
+  ungroup() %>%
+  mutate(
+    gene1_freq_as_gene2 = ff(gene1, gene2)
+  ) %>%
+  group_by(gene2) %>%
+  mutate(gene2_freq_as_gene2 = length(gene2 %in% gene2)) %>%
+  ungroup() %>%
+  mutate(
+    gene2_freq_as_gene1 = ff(gene2, gene1)
+  ) 
+
+agnostic_forEnr_clean_fil <- agnostic_forEnr_clean %>% 
+  dplyr::select(-rep_rows) %>%
+  group_by(gene1) %>%
+  mutate(gene1_freq_as_gene1 = length(gene1 %in% gene1)) %>%
+  ungroup() %>%
+  mutate(
+    gene1_freq_as_gene2 = ff(gene1, gene2)
+  ) %>%
+  filter(!(gene1_freq_as_gene2 > gene1_freq_as_gene1)) %>%
+  filter(!(gene1_freq_as_gene2 == gene1_freq_as_gene1)) %>%
+  group_by(gene2) %>%
+  mutate(gene2_freq_as_gene2 = length(gene2 %in% gene2)) %>%
+  ungroup() %>%
+  mutate(
+    gene2_freq_as_gene1 = ff(gene2, gene1)
+  ) %>%
+  filter(!(gene2_freq_as_gene1 > gene2_freq_as_gene2)) %>%
+  filter(!(gene2_freq_as_gene1 == gene2_freq_as_gene2))
+
+
+
+# get the top n pairs where n is the number of pairs in mechanistic (After cleaning)
+agnostic_forEnr_clean_fil <- agnostic_forEnr_clean_fil[c(1:nrow(mech_forEnr_clean_fil)), ]
+
+## get the genes
+agnostic_gene1 <- unique(agnostic_forEnr_clean_fil$gene1)
+agnostic_gene2 <- unique(agnostic_forEnr_clean_fil$gene2)
+
+# check
+summary(agnostic_gene1 %in% agnostic_gene2)
+summary(agnostic_gene2 %in% agnostic_gene1)
+
+################
+## enrichment
+
+library(enrichR)
+
+dbs <- listEnrichrDbs()
+dbs <- c("GO_Biological_Process_2021", 'MSigDB_Oncogenic_Signatures')
+
+#############
+## mechanistic
+
+# gobp
+Enriched_mech_gene1 <- enrichr(genes = mech_gene1, databases = dbs)
+Enriched_mech_gene2 <- enrichr(genes = mech_gene2, databases = dbs)
+
+Enriched_mech_gene1_gobp <- Enriched_mech_gene1["GO_Biological_Process_2021"]$GO_Biological_Process_2021
+Enriched_mech_gene1_gobp <- Enriched_mech_gene1_gobp[Enriched_mech_gene1_gobp$Adjusted.P.value <= 0.05, ]
+
+Enriched_mech_gene2_gobp <- Enriched_mech_gene2["GO_Biological_Process_2021"]$GO_Biological_Process_2021
+Enriched_mech_gene2_gobp <- Enriched_mech_gene2_gobp[Enriched_mech_gene2_gobp$Adjusted.P.value <= 0.05, ]
+
+# oncogenic sigs
+#Enriched_mech_gene1_onco <- Enriched_mech_gene1["MSigDB_Oncogenic_Signatures"]$MSigDB_Oncogenic_Signatures
+#Enriched_mech_gene1_onco <- Enriched_mech_gene1_onco[Enriched_mech_gene1_onco$Adjusted.P.value <= 0.05, ]
+
+#Enriched_mech_gene2_onco <- Enriched_mech_gene2["MSigDB_Oncogenic_Signatures"]$MSigDB_Oncogenic_Signatures
+#Enriched_mech_gene2_onco <- Enriched_mech_gene2_onco[Enriched_mech_gene2_onco$Adjusted.P.value <= 0.05, ]
+
+###########
+## agnostic
+
+# gobp
+Enriched_agnostic_gene1 <- enrichr(genes = agnostic_gene1, databases = dbs)
+Enriched_agnostic_gene2 <- enrichr(genes = agnostic_gene2, databases = dbs)
+
+Enriched_agnostic_gene1_gobp <- Enriched_agnostic_gene1["GO_Biological_Process_2021"]$GO_Biological_Process_2021
+Enriched_agnostic_gene1_gobp <- Enriched_agnostic_gene1_gobp[Enriched_agnostic_gene1_gobp$Adjusted.P.value <= 0.05, ]
+
+Enriched_agnostic_gene2_gobp <- Enriched_agnostic_gene2["GO_Biological_Process_2021"]$GO_Biological_Process_2021
+Enriched_agnostic_gene2_gobp <- Enriched_agnostic_gene2_gobp[Enriched_agnostic_gene2_gobp$Adjusted.P.value <= 0.05, ]
+
+# oncogenic sigs
+#Enriched_agnostic_gene1_onco <- Enriched_agnostic_gene1["MSigDB_Oncogenic_Signatures"]$MSigDB_Oncogenic_Signatures
+#Enriched_agnostic_gene1_onco <- Enriched_agnostic_gene1_onco[Enriched_agnostic_gene1_onco$Adjusted.P.value <= 0.05, ]
+
+#Enriched_agnostic_gene2_onco <- Enriched_agnostic_gene2["MSigDB_Oncogenic_Signatures"]$MSigDB_Oncogenic_Signatures
+#Enriched_agnostic_gene2_onco <- Enriched_agnostic_gene2_onco[Enriched_agnostic_gene2$Adjusted.P.value <= 0.05, ]
 
 #####################################################################################
 ## venn diagram
