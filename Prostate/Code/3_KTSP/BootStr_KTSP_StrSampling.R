@@ -387,7 +387,6 @@ sum_result_mech <- do.call(rbind, list_results_mech)
 sum_result_mech$feature <- rownames(sum_result_mech)
 sum_result_mech <- as.data.frame(sum_result_mech[order(sum_result_mech$rep_rows, decreasing = T), ])
 
-
 ###########
 ## histogram
 # # join the agnostic and mechanistic frequency
@@ -603,6 +602,7 @@ dev.off()
 ## network plots
 
 library(igraph)
+library(qgraph)
 
 # make the graph
 network_mech <- graph_from_data_frame(mech_indvGns_good_clean, 
@@ -914,10 +914,10 @@ gs_cfg_agnostic <- cluster_fast_greedy(as.undirected(network_gs_agnostic))
 
 radian.rescale <- function(x, start=0, direction=1) {
   c.rotate <- function(x) (x + start) %% (2 * pi) * direction
-  c.rotate(scales::rescale(x, c(0, 2 * pi), range(x)))
+  c.rotate(ggplot2::rescale(x, c(0, 2 * pi), range(x)))
 }
 
-lab.locs <- radian.rescale(x=1:ncol(hallmarks_gs_long_mech_fil), direction=1, start=0)
+lab.locs <- radian.rescale(x=1:15, direction=-1, start=0)
 
 # set.seed(333)
 # # DEGREE: the number of genesets it overlaps with
@@ -973,7 +973,7 @@ plot(gs_cfg_mech, network_gs_mech,
      vertex.label.dist=0,
      
      vertex.label.cex=1.2,
-     vertex.label.degree = lab.locs,
+     vertex.label.degree = -pi/2,
      vertex.label.color = "black",
      
      edge.arrow.width=0, 
@@ -1013,16 +1013,11 @@ plot(gs_cfg_agnostic, network_gs_agnostic,
 )
 dev.off()
 
+
+
+
 ####################################################################################
 ### Geneset enrichment on all genes
-
-sum_result_mech <- do.call(rbind, list_results_mech)
-sum_result_mech$feature <- rownames(sum_result_mech)
-sum_result_mech <- as.data.frame(sum_result_mech[order(sum_result_mech$rep_rows, decreasing = T), ])
-
-sum_result_agnostic <- do.call(rbind, list_results_agnostic)
-sum_result_agnostic$feature <- rownames(sum_result_agnostic)
-sum_result_agnostic <- as.data.frame(sum_result_agnostic[order(sum_result_agnostic$rep_rows, decreasing = T), ])
 
 ## organize the data:  mechanistic
 
@@ -1039,10 +1034,10 @@ mech_forEnr_freq <- sum_result_mech %>%
   dplyr::mutate(tmp = strsplit(as.character(feature),'-')) %>%
   dplyr::mutate(gene1 = map_chr(tmp, 1),
                 gene2 = map_chr(tmp, 2)) %>%
-  column_to_rownames(var = 'feature') %>%
-  dplyr::select(-tmp) %>%
+  dplyr::select(-tmp, -feature) %>%
   relocate(rep_rows, .after = gene2)
 
+rownames(mech_forEnr_freq) <- rownames(sum_result_mech)
 mech_forEnr_freq <- data.frame(rep_rows = mech_forEnr_freq$rep_rows, 
                                pairs_Mech = rownames(mech_forEnr_freq),
                                row.names = rownames(mech_forEnr_freq))
@@ -1071,9 +1066,10 @@ agnostic_forEnr_freq <- sum_result_agnostic %>%
   dplyr::mutate(tmp = strsplit(as.character(feature),'-')) %>%
   dplyr::mutate(gene1 = map_chr(tmp, 1),
                 gene2 = map_chr(tmp, 2)) %>%
-  column_to_rownames(var = 'feature') %>%
-  dplyr::select(-tmp) %>%
+  dplyr::select(-tmp, -feature) %>%
   relocate(rep_rows, .after = gene2)
+
+rownames(agnostic_forEnr_freq) <- rownames(sum_result_agnostic)
 
 agnostic_forEnr_freq <- data.frame(rep_rows = agnostic_forEnr_freq$rep_rows, 
                                    pairs_agnostic = rownames(agnostic_forEnr_freq),
@@ -1230,6 +1226,7 @@ Enriched_mech_gene1_gobp <- Enriched_mech_gene1_gobp[Enriched_mech_gene1_gobp$Ad
 Enriched_mech_gene2_gobp <- Enriched_mech_gene2["GO_Biological_Process_2021"]$GO_Biological_Process_2021
 Enriched_mech_gene2_gobp <- Enriched_mech_gene2_gobp[Enriched_mech_gene2_gobp$Adjusted.P.value <= 0.05, ]
 
+
 ## agnostic
 Enriched_agnostic_gene1 <- enrichr(genes = agnostic_gene1, databases = dbs)
 Enriched_agnostic_gene2 <- enrichr(genes = agnostic_gene2, databases = dbs)
@@ -1239,6 +1236,13 @@ Enriched_agnostic_gene1_gobp <- Enriched_agnostic_gene1_gobp[Enriched_agnostic_g
 
 Enriched_agnostic_gene2_gobp <- Enriched_agnostic_gene2["GO_Biological_Process_2021"]$GO_Biological_Process_2021
 Enriched_agnostic_gene2_gobp <- Enriched_agnostic_gene2_gobp[Enriched_agnostic_gene2_gobp$Adjusted.P.value <= 0.05, ]
+
+############
+## save
+
+library(openxlsx)
+list_of_tables <- list("agnostic_gene1" = Enriched_agnostic_gene1_gobp, "agnostic_gene2" = Enriched_agnostic_gene2_gobp, "mechanistic_gene1" = Enriched_mech_gene1_gobp, "mechanistic_gene2" = Enriched_mech_gene2_gobp)
+write.xlsx(list_of_tables, file = "./objs/prostate_enrichment.xlsx")
 
 #####################################################################################
 ## venn diagram

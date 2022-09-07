@@ -617,6 +617,22 @@ agnostic_indvGns_good_clean <- filter(agnostic_indvGns_good_clean, !grepl("///",
 agnostic_indvGns_good_clean <- aggregate(rep_rows~(gene1+ gene2),data=agnostic_indvGns_good_clean, FUN = sum)
 agnostic_indvGns_good_clean <- agnostic_indvGns_good_clean[order(agnostic_indvGns_good_clean$rep_rows, decreasing = T), ] 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## matrix for vertices
 agnostic_vertics <- agnostic_indvGns_good_clean %>%
   pivot_longer(cols = c('gene1', 'gene2'), values_to = 'gene') %>%
@@ -740,7 +756,7 @@ dev.off()
 ## network plots
 
 library(igraph)
-
+library(qgraph)
 # make the graph
 network_mech <- graph_from_data_frame(mech_indvGns_good_clean, 
                                       directed = T, 
@@ -1360,6 +1376,12 @@ Enriched_agnostic_gene1_gobp <- Enriched_agnostic_gene1_gobp[Enriched_agnostic_g
 Enriched_agnostic_gene2_gobp <- Enriched_agnostic_gene2["GO_Biological_Process_2021"]$GO_Biological_Process_2021
 Enriched_agnostic_gene2_gobp <- Enriched_agnostic_gene2_gobp[Enriched_agnostic_gene2_gobp$Adjusted.P.value <= 0.05, ]
 
+############
+## save
+
+library(openxlsx)
+list_of_tables <- list("agnostic_gene1" = Enriched_agnostic_gene1_gobp, "agnostic_gene2" = Enriched_agnostic_gene2_gobp, "mechanistic_gene1" = Enriched_mech_gene1_gobp, "mechanistic_gene2" = Enriched_mech_gene2_gobp)
+write.xlsx(list_of_tables, file = "./objs/TNBC_enrichment.xlsx")
 
 
 #####################################################################################

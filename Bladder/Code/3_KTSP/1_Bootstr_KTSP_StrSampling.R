@@ -502,7 +502,7 @@ Agnosticfreq <- agnostic_indvGns_good_clean %>%
 MechFreq_barplot <- ggplot(data=Mechfreq, aes(x=rep_rows, y=reorder(feature, rep_rows))) +
   geom_col(width=0.5, fill='#00BFC4') + 
   #coord_cartesian(xlim = c(1, 600))
-  scale_x_continuous(limits = c(1,550), n.breaks =5, oob = scales::squish, expand = c(0, 0)) +
+  scale_x_continuous(limits = c(1,600), n.breaks =5, oob = scales::squish, expand = c(0, 0)) +
   labs(y = "Pair", x = "Frequency", title = "Mechanistic") +
   theme(plot.title = element_text(size=16, hjust=0.5, face = 'plain', color = 'black'), 
         axis.text.y = element_text(size=10, color = 'black'),
@@ -538,6 +538,9 @@ dev.off()
 
 ########################################
 ## network plots
+
+library(igraph)
+library(qgraph)
 
 # make the graph
 network_mech <- graph_from_data_frame(mech_indvGns_good_clean, 
@@ -1101,7 +1104,6 @@ agnostic_forEnr_clean_fil <- agnostic_forEnr_clean %>%
   filter(!(gene2_freq_as_gene1 == gene2_freq_as_gene2))
 
 
-
 # get the top n pairs where n is the number of pairs in mechanistic (After cleaning)
 agnostic_forEnr_clean_fil <- agnostic_forEnr_clean_fil[c(1:nrow(mech_forEnr_clean_fil)), ]
 
@@ -1121,7 +1123,7 @@ library(enrichR)
 dbs <- listEnrichrDbs()
 dbs <- c("GO_Biological_Process_2021", 'MSigDB_Oncogenic_Signatures')
 
-#############
+###############
 ## mechanistic
 
 # gobp
@@ -1134,14 +1136,54 @@ Enriched_mech_gene1_gobp <- Enriched_mech_gene1_gobp[Enriched_mech_gene1_gobp$Ad
 Enriched_mech_gene2_gobp <- Enriched_mech_gene2["GO_Biological_Process_2021"]$GO_Biological_Process_2021
 Enriched_mech_gene2_gobp <- Enriched_mech_gene2_gobp[Enriched_mech_gene2_gobp$Adjusted.P.value <= 0.05, ]
 
-# oncogenic sigs
-#Enriched_mech_gene1_onco <- Enriched_mech_gene1["MSigDB_Oncogenic_Signatures"]$MSigDB_Oncogenic_Signatures
-#Enriched_mech_gene1_onco <- Enriched_mech_gene1_onco[Enriched_mech_gene1_onco$Adjusted.P.value <= 0.05, ]
+# fix the names and add variable for gene count and ratio
+Enriched_mech_gene1_gobp$Term <- gsub(' \\(.+', '', Enriched_mech_gene1_gobp$Term)
+Enriched_mech_gene2_gobp$Term <- gsub(' \\(.+', '', Enriched_mech_gene2_gobp$Term)
 
-#Enriched_mech_gene2_onco <- Enriched_mech_gene2["MSigDB_Oncogenic_Signatures"]$MSigDB_Oncogenic_Signatures
-#Enriched_mech_gene2_onco <- Enriched_mech_gene2_onco[Enriched_mech_gene2_onco$Adjusted.P.value <= 0.05, ]
+Enriched_mech_gene1_gobp <- Enriched_mech_gene1_gobp %>%
+  mutate(Genes = strsplit(Genes, ';')) %>%
+  mutate(gene_counts = as.numeric(lengths(Genes))) %>%
+  mutate(gs_length = as.numeric(gsub('.+/', '',  Overlap))) %>%
+  mutate(ratio = gene_counts/gs_length) %>%
+  #arrange(gene_counts) %>%
+  mutate(Term = factor(Term, levels = Term)) %>%
+  mutate(gene_names = gsub('c', '', Genes)) %>%
+  mutate(gene_names = gsub('[[:punct:]]', '', gene_names))
+  
+Enriched_mech_gene1_gobp$gene_names
 
-###########
+Enriched_mech_gene2_gobp <- Enriched_mech_gene2_gobp %>%
+  mutate(Genes = strsplit(Genes, ';')) %>%
+  mutate(gene_counts = as.numeric(lengths(Genes))) %>%
+  mutate(gs_length = as.numeric(gsub('.+/', '',  Overlap))) %>%
+  mutate(ratio = gene_counts/gs_length) %>%
+  #arrange(gene_counts) %>%
+  mutate(Term = factor(Term, levels = Term)) %>%
+  mutate(gene_names = gsub('c', '', Genes)) %>%
+  mutate(gene_names = gsub('[[:punct:]]', '', gene_names))
+
+## plot
+#plot_mech_gene1 <- plotEnrich(Enriched_mech_gene1_gobp, showTerms = 20, numChar = 50, y = "Count", orderBy = "P.value")
+#plot_mech_gene2 <- plotEnrich(Enriched_mech_gene2_gobp, showTerms = 20, numChar = 50, y = "Count", orderBy = "P.value")
+
+# plot_mech_gene1 <- ggplot(Enriched_mech_gene1_gobp, aes(x = gene_counts, y = Term, fill = Adjusted.P.value)) +
+#   geom_bar(stat = "identity") + 
+#   theme_bw() +
+#   scale_fill_continuous(low = "blue", high = "red") + 
+#   guides(fill = guide_colorbar(title = "adjusted p-value", reverse = FALSE)) +
+#   xlab("Gene count") + 
+#   ylab("gene sets")
+#   
+# ggplot(Enriched_mech_gene1_gobp, aes(x = gene_counts, y = Term, fill = Adjusted.P.value, size = gene_counts, label = gene_names)) +
+#   #geom_dotplot(binwidth = 1, binpositions = "all", position = "dodge", binaxis = "y") + 
+#   geom_point(shape = 21, alpha=.5) +
+#   theme_bw() +
+#   scale_fill_continuous(low = "blue", high = "red") + 
+#   guides(fill = guide_colorbar(title = "adjusted p-value", reverse = FALSE)) +
+#   geom_text(show.legend = F, size = 2, nudge_x = 0, nudge_y = 0) +
+#   xlab("Gene count") + 
+#   ylab("gene sets")  
+#############
 ## agnostic
 
 # gobp
@@ -1154,12 +1196,39 @@ Enriched_agnostic_gene1_gobp <- Enriched_agnostic_gene1_gobp[Enriched_agnostic_g
 Enriched_agnostic_gene2_gobp <- Enriched_agnostic_gene2["GO_Biological_Process_2021"]$GO_Biological_Process_2021
 Enriched_agnostic_gene2_gobp <- Enriched_agnostic_gene2_gobp[Enriched_agnostic_gene2_gobp$Adjusted.P.value <= 0.05, ]
 
-# oncogenic sigs
-#Enriched_agnostic_gene1_onco <- Enriched_agnostic_gene1["MSigDB_Oncogenic_Signatures"]$MSigDB_Oncogenic_Signatures
-#Enriched_agnostic_gene1_onco <- Enriched_agnostic_gene1_onco[Enriched_agnostic_gene1_onco$Adjusted.P.value <= 0.05, ]
+# fix the names
+Enriched_agnostic_gene1_gobp$Term <- gsub(' \\(.+', '', Enriched_agnostic_gene1_gobp$Term)
+Enriched_agnostic_gene2_gobp$Term <- gsub(' \\(.+', '', Enriched_agnostic_gene2_gobp$Term)
 
-#Enriched_agnostic_gene2_onco <- Enriched_agnostic_gene2["MSigDB_Oncogenic_Signatures"]$MSigDB_Oncogenic_Signatures
-#Enriched_agnostic_gene2_onco <- Enriched_agnostic_gene2_onco[Enriched_agnostic_gene2$Adjusted.P.value <= 0.05, ]
+
+## plot
+plot_agnostic_gene1 <- plotEnrich(Enriched_agnostic_gene1_gobp, showTerms = 20, numChar = 50, y = "Count", orderBy = "P.value", title = NULL)
+plot_agnostic_gene2 <- plotEnrich(Enriched_agnostic_gene2_gobp, showTerms = 20, numChar = 50, y = "Count", orderBy = "P.value", title = NULL)
+
+
+#########
+# all in one plot
+# tiff(filename = "/Users/mohamedomar/Library/CloudStorage/Box-Box/MechPaper/iScience/manuscript/main_figures/bladder_enrichment.tiff", width = 3000, height = 2000, res = 300)
+# ((plot_agnostic_gene1 + plot_layout(tag_level = "new") & theme(plot.tag = element_text(size = 10))) | 
+#     (plot_agnostic_gene1 + plot_layout(tag_level = "new") & theme(plot.tag = element_text(size = 10))) / 
+#     (plot_mech_gene1 + plot_layout(tag_level = "new") & theme(plot.tag = element_text(size = 10))) |
+#     (plot_mech_gene2 + plot_layout(tag_level = "new") & theme(plot.tag = element_text(size = 10)))
+# ) +
+#   #plot_layout(widths = c(0.4, 1)) + 
+#   plot_annotation(
+#     #title = 'gene s',
+#     tag_levels = c('A'),
+#     theme = theme(plot.title = element_text(size = 20, face = "plain", hjust=0.5))
+#   )
+# dev.off()
+
+
+############
+## save
+
+library(openxlsx)
+list_of_tables <- list("agnostic_gene2" = Enriched_agnostic_gene2_gobp, "mechanistic_gene1" = Enriched_mech_gene1_gobp, "mechanistic_gene2" = Enriched_mech_gene2_gobp)
+write.xlsx(list_of_tables, file = "./objs/bladder_enrichment.xlsx")
 
 #####################################################################################
 ## venn diagram
